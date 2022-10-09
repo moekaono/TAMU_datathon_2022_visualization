@@ -1,0 +1,111 @@
+---
+title: "Untitled"
+author: "Moeka"
+date: '2022-10-08'
+output: html_document
+---
+```{r}
+library(ggplot2)
+library(parsedate)
+library(tidyr)
+library(dplyr)
+library(broom)
+
+```
+
+```{r setup, include=FALSE}
+setwd("C:/Users/m0eka/Documents")
+
+site <- read.csv("site_metadata.csv",header = T, sep = ",")
+engine <- read.csv("engine_metadata.csv",header = T, sep = ",")
+
+output <- engine
+output$ID<- 1:nrow(output)
+
+output1 <- merge(x=output,y=site,by=c("CUSTOMER_NAME","PLANT_NAME"))
+output1 <- output1[order(output1$ID),]
+```
+
+```{r}
+library(data.table)
+library(readr)
+library(plyr)
+
+
+files <- list.files(path = "C:/Users/m0eka/Documents/all_data_v2",pattern = ".csv")
+all_data <- do.call(rbind, lapply(files, function(x) 
+                    transform(read.csv(x), File = basename(x))))
+
+all_data$X <- as.POSIXct(all_data$X,format="%Y-%m-%d %H:%M:%S", tz="UTC")
+
+```
+
+
+```{r}
+
+all_data <- all_data %>% mutate(THRM_EFF = (100*POWER)/)
+
+fraction <- fraction %>% mutate(avg = (dorm_avg+grow_avg)/2)
+
+summary <- all_data %>% aggregate(c(2:5), 
+                                  by=list(Category="File"), FUN=mean,
+                                  na.action = na.omit)
+summary$HRS <- NA
+
+summary<- all_data %>%
+  group_by(File) %>%  
+  summarise_at(c("CMP_SPEED","POWER","FUEL_FLOW","CO2"), mean, na.rm = TRUE) %>%
+  ungroup() 
+
+summary_1 <- all_data %>%
+  group_by(File) %>% 
+  summarise_at("CMP_SPEED", ~sum(. != 0)) 
+
+summary2 <- merge(x=summary,y=summary_1,by="File")
+  
+colnames(summary2)[c(1,2,6)] <- c("FILE_ID","CMP_SPEED","HRS")
+
+result <- merge(x=output1,y=summary2,by="FILE_ID")
+result <- result[order(result$ID),]
+result1 <- result %>% mutate(THRM_EFF = 100*POWER/(FUEL_FLOW*FUEL_LHV))
+
+
+result1 <- result1 %>% mutate(CO2_sum = CO2*HRS*60*60)
+
+```
+
+
+```{r}
+result2<-result1 %>% group_by(PLANT_NAME) %>%  
+    summarise_at(c("CMP_SPEED","POWER","FUEL_FLOW","CO2_sum","HRS","THRM_EFF"), mean, na.rm = TRUE) %>%
+    ungroup() 
+
+result2 <- result2 %>% mutate(EFF = THRM_EFF/(0.45*1.055085)) # unit conversion
+
+result2_1 <- merge(x=site,y=result2,by="PLANT_NAME")
+result2_1<-result2_1[,-c(7)]
+
+
+colnames(result2_1) <- c("Plant Nams",
+                         "Customer Name",
+                         "Latitude",
+                         "Longitude",
+                         "Elevation(m)",
+                         "Lower Heating Value (BTU/lb)",
+                         "Average Compressor Speed(RPM)",
+                         "Average Power(kW)",
+                         "Average Fuel Flow(kg/s)",
+                         "Total CO2 emission(kg)",
+                         "Average Operating Hours(hr)",
+                         "Thermal Efficiency Average(%)"
+                         )
+
+write.csv(result2_2,"C:/Users/m0eka/Documents/result2_2.csv")
+```
+
+
+
+```{r}
+library(GGally)
+ggpairs(result1[,c(7,8,13:15,17:19)])
+```
