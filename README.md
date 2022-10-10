@@ -5,6 +5,6 @@ Our team was awarded 2nd place in the challenge. Our final presentation is avail
 
 
 Team Members:
-- [Moeka Ono](https://www.linkedin.com/in/moeka-ono/)
-- Molly McKinney
 - Erin Mok
+- Molly McKinney
+- [Moeka Ono](https://www.linkedin.com/in/moeka-ono/)
